@@ -23,9 +23,11 @@ eta_p,0.0005
 eta_h,0.005
 zeta,0.3
 xi,0.6
-admC,0.01
-admI,0
-admX_S,1
-transC,0.11
-transI,0.01
-transX_S,4
+muAdmC,0.25
+sigmaAdmC,0.25
+muAdmI,0.25
+sigmaAdmI,0.25
+muTranC,0.25
+sigmaTranC,0.25
+muTranI,0.25
+sigmaTranI,0.25

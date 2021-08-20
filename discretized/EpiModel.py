@@ -3,7 +3,7 @@ import numpy as np
 def EpiEquations(y, t, numberUnits, omega_UC, omega_DC, omega_I, alpha_b, rho, pi, \
                  epsilon, kappa, delta, sigma_h, sigmaHat_h, rho_C, sigma_y, sigma_l, \
                  sigma_w, sigmaHat_y, sigmaHat_l, sigmaHat_w, beta_hp, beta_ph, \
-                 E50, eta_p, eta_h, zeta, xi, admC, admI, admX_S, transC, transI, transX_S, \
+                 E50, eta_p, eta_h, zeta, xi, admC, admI, admX_S, tranC, tranI, tranX_S, \
                  unitParamsValues, psi_in, psi_out, n_in, n_out, internalTransferRate, \
                  deviceTransferRate):
     (S, X, UC, DC, I, M, N0, N1, D0, D1, Y, L, W) = [y[i:i + numberUnits] for i in range(0, len(y), numberUnits)]
@@ -13,7 +13,11 @@ def EpiEquations(y, t, numberUnits, omega_UC, omega_DC, omega_I, alpha_b, rho, p
     alpha_ny, alpha_nl, alpha_nw, alpha_dy, alpha_dl, alpha_dw = transmissionParams[8:14]
     alpha_en, alpha_ed = transmissionParams[14:]
     statusAtAdmission = [(1-(admC+admI))/(admX_S+1), (1-(admC+admI))*admX_S/(admX_S+1), admC, admI]
-    statusAtTransfer = [(1-(transC+transI))/(transX_S+1), (1-(transC+transI))*transX_S/(transX_S+1), transC, transI]
+    if abs(sum(statusAtAdmission)-1) > 0.01:
+        raise ValueError('statusAtAdmission not at equilibrium!')
+    statusAtTransfer = [(1-(tranC+tranI))/(tranX_S+1), (1-(tranC+tranI))*tranX_S/(tranX_S+1), tranC, tranI]
+    if abs(sum(statusAtTransfer)-1) > 0.01:
+        raise ValueError('statusAtTransfer not at equilibrium!')
     f_S, f_X, f_C, f_I = np.vstack(statusAtAdmission) * psi_in
     f_Y, f_L, f_W = [np.zeros(numberUnits) for i in range(3)]
     extTransIn_S, extTransIn_X, extTransIn_C, extTransIn_I = np.vstack(statusAtTransfer) * n_in
@@ -44,7 +48,10 @@ def CalculateTransmissionParams(unitParamsValues, beta_hp, beta_ph, eta_p, eta_h
         lambda_nw, lambda_dy, lambda_dl, lambda_dw, r_n, r_d = unitParamsValues
     alpha_np = lambda_n * beta_hp
     alpha_dp = lambda_d * beta_hp
-    alpha_ep = lambda_py * Y / (Y + E50) + lambda_pl * L / (L + E50) + lambda_pw * W / (W + E50)
+    alpha_yp = probabilityContamination(doseResponse(Y, E50), lambda_py)
+    alpha_lp = probabilityContamination(doseResponse(L, E50), lambda_pl)
+    alpha_wp = probabilityContamination(doseResponse(W, E50), lambda_pw)
+    alpha_ep = alpha_yp + alpha_lp + alpha_wp
     alpha_pn = lambda_n / r_n * beta_ph
     alpha_pd = lambda_d / r_d * beta_ph    
     alpha_py = lambda_py * eta_p
@@ -61,3 +68,9 @@ def CalculateTransmissionParams(unitParamsValues, beta_hp, beta_ph, eta_p, eta_h
     
     return [alpha_np, alpha_dp, alpha_ep, alpha_pn, alpha_pd, alpha_py, alpha_pl, alpha_pw, \
     	    alpha_ny, alpha_nl, alpha_nw, alpha_dy, alpha_dl, alpha_dw, alpha_en, alpha_ed]
+
+def doseResponse(E, E50):
+    return E / (E + E50)
+
+def probabilityContamination(p, n):
+    return 1 - (1 - p)**n

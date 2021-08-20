@@ -1,0 +1,9 @@
+parameter,lower,upper,shape
+muAdmC,0,0.5,Uniform
+sigmaAdmC,0,1,Uniform
+muAdmI,0,0.5,Uniform
+sigmaAdmI,0,1,Uniform
+muTranC,0,0.5,Uniform
+sigmaTranC,0,1,Uniform
+muTranI,0,0.5,Uniform
+sigmaTranI,0,1,Uniform

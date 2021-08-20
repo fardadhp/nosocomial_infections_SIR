@@ -7,36 +7,56 @@ from setup import importData
 from setup import setupModel
 from EpiModel import EpiEquations
 from scipy.integrate import odeint
+import scipy.stats as stats
 
-def patientFlow(allParams, t):
+def patientFlow(allParams, t, timeStep):
     numberUnits = allParams['initialConditionsValues'].shape[1]
-    if t % 24 == 0:
-        tt = int(t//24)
+    if t % int(24/timeStep) == 0:
+        tt = int(t//int(24/timeStep))
         admission = np.array([unit[tt] for unit in allParams['admissionTS']])
         discharge = np.array([unit[tt] for unit in allParams['dischargeTS']])
-        extTransfer = np.array([unit[tt] for unit in allParams['transferTS']])
+        extTransferIn = np.array([unit[tt] for unit in allParams['transferInTS']])
+        extTransferOut = np.array([unit[tt] for unit in allParams['transferOutTS']])
     else:
-        admission, discharge, extTransfer = [0,0,0]
-    allParams['admission'] = admission / 24
-    allParams['discharge'] = discharge / 24
-    extTransferIn = np.clip(extTransfer, a_min=0, a_max=np.inf) / 24
-    extTransferOut = np.clip(-extTransfer, a_min=0, a_max=np.inf) / 24
-    allParams['transferIn'] = extTransferIn
-    allParams['transferOut'] = extTransferOut 
-    
+        admission, discharge, extTransferIn, extTransferOut = [0,0,0,0]
+    allParams['admission'] = admission / int(24/timeStep)
+    allParams['discharge'] = discharge / int(24/timeStep)
+    # extTransferIn = np.clip(extTransfer, a_min=0, a_max=np.inf) / int(24/timeStep)
+    # extTransferOut = np.clip(-extTransfer, a_min=0, a_max=np.inf) / int(24/timeStep)
+    allParams['transferIn'] = extTransferIn / int(24/timeStep)
+    allParams['transferOut'] = extTransferOut / int(24/timeStep)    
     return allParams
+
+def samplePatientStatus(allParams):
+    ind = np.where(allParams['generalParamsNames']=='muAdmC')[0][0]
+    muAdmC = allParams['generalParamsValues'][ind]
+    sigmaAdmC = allParams['generalParamsValues'][ind+1]
+    muAdmI = allParams['generalParamsValues'][ind+2]
+    sigmaAdmI = allParams['generalParamsValues'][ind+3]
+    muTranC = allParams['generalParamsValues'][ind+4]
+    sigmaTranC = allParams['generalParamsValues'][ind+5]
+    muTranI = allParams['generalParamsValues'][ind+6]
+    sigmaTranI = allParams['generalParamsValues'][ind+7]
+    admC = stats.truncnorm((-muAdmC)/sigmaAdmC, (1 - muAdmC)/sigmaAdmC, loc=muAdmC, scale=sigmaAdmC).rvs(1)[0]
+    admI = stats.truncnorm((-muAdmI)/sigmaAdmI, (1 - admC - muAdmI)/sigmaAdmI, loc=muAdmI, scale=sigmaAdmI).rvs(1)[0]
+    tranC = stats.truncnorm((-muTranC)/sigmaTranC, (1 - muTranC)/sigmaTranC, loc=muTranC, scale=sigmaTranC).rvs(1)[0]
+    tranI = stats.truncnorm((-muTranI)/sigmaTranI, (1 - tranC - muTranI)/sigmaTranI, loc=muTranI, scale=sigmaTranI).rvs(1)[0]
+    return (admC, admI, 1, tranC, tranI, 1)
+        
         
 
-def runModel(allParams, y0, tVector):
+def runModel(allParams, y0, tVector, timeStep, simLength):
     numberUnits = allParams['initialConditionsValues'].shape[1]    
     y = []
-    for i in range(int(len(tVector)/24)):
-        tVec = tVector[i*24:(i+1)*24]
-        allParams = patientFlow(allParams, tVec[0])
-        funArgs = (numberUnits,*allParams['generalParamsValues'],allParams['unitParamsValues'],\
-               allParams['admission'],allParams['discharge'],allParams['transferIn'],\
-               allParams['transferOut'],allParams['internalTransferRate'],\
-               allParams['deviceTransferRate'])
+    ind = np.where(allParams['generalParamsNames']=='muAdmC')[0][0]
+    for i in range(simLength):
+        tVec = tVector[i*int(24/timeStep):(i+1)*int(24/timeStep)+1]
+        patientStatus = samplePatientStatus(allParams)
+        allParams = patientFlow(allParams, tVec[0], timeStep)
+        funArgs = (numberUnits,*allParams['generalParamsValues'][:ind],*patientStatus,\
+                   allParams['unitParamsValues'],allParams['admission'],allParams['discharge'],\
+                   allParams['transferIn'],allParams['transferOut'],allParams['internalTransferRate'],\
+                   allParams['deviceTransferRate'])
         output = odeint(EpiEquations, y0, tVec, args=funArgs)
         if any(output[-1]<-1):
             raise ValueError('negative value in compartments!')
