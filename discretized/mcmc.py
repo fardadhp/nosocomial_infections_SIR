@@ -61,7 +61,7 @@ def runMCMC(loglikeFunc, sensitivity, allParams, nSamples, nCore):
         theta = tt.as_tensor_variable(theta)
         pm.Potential('likelihood', loglikeFunc(theta))
         trace = pm.sample(nSamples, tune=int(nSamples/2), step=pm.Metropolis(), 
-                          cores=nCore, chains=2)
+                          cores=nCore, chains=1)
         data = az.from_pymc3(trace=trace)
         az.plot_trace(trace)
         plt.savefig('./calibration/MCMC/traces.png',dpi=300)
@@ -151,9 +151,9 @@ if __name__ == '__main__':
         nCore, nSamples, timeStep, simLength = [int(i) for i in sys.argv[1:]]
     except:
         nCore = mp.cpu_count()
-        nSamples = 3000
+        nSamples = 4
         timeStep = 1  # hour(s)
-        simLength = 365
+        simLength = 10
     t0 = time.time()    
     main(nCore, nSamples, timeStep, simLength)
     print(time.time()-t0)

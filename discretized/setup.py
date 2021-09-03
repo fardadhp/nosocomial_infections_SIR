@@ -6,13 +6,16 @@ import glob
 
 def importData(timeStep):
     allParams = {}
+    # unit names
+    unitNames = pd.read_csv("./data/unit data/names.csv",header=None).iloc[:,0].values
+    allParams['unitNames'] = unitNames
     # admissiom/discharge/transfer
-    contents = glob.glob('./data/unit data/INTUnit*')
     admission = []
     discharge = []
     transferIn = []
     transferOut = []
-    for file in contents:
+    for unit in unitNames:
+        file = './data/unit data/'+unit+'.csv'
         unitData = pd.read_csv(file).loc[:,['admission','discharge','transfer_in','transfer_out']]
         admission.append(unitData.loc[:,'admission'].values)
         discharge.append(unitData.loc[:,'discharge'].values)
@@ -28,9 +31,6 @@ def importData(timeStep):
     generalParamsValues = generalParams.iloc[:,1].values
     allParams['generalParamsNames'] = generalParamsNames
     allParams['generalParamsValues'] = generalParamsValues
-    # unit names
-    unitNames = pd.read_csv("./data/unit data/names.csv",header=None).iloc[:,0].values
-    allParams['unitNames'] = unitNames
     # unit Parameters
     unitParams = pd.read_csv("./data/unit data/unit_parameters.csv")
     unitParamsNames = unitParams.iloc[:,0].values
@@ -53,12 +53,12 @@ def importData(timeStep):
     hyperParams = pd.read_csv('./data/patient_status_hyperparameters.csv')
     allParams['patientStatusHyperParams'] = hyperParams
     # fitting data
-    fitDatafiles = glob.glob("./data/unit data/INTUnit*")
     S_fitData = []
     X_fitData = []
     C_fitData = []
     I_fitData = []
-    for file in fitDatafiles:
+    for unit in unitNames:
+        file = './data/unit data/'+unit+'.csv'
         fitData = pd.read_csv(file)
         S_fitData.append(fitData.loc[:,'Susceptible'].values)
         X_fitData.append(fitData.loc[:,'SusceptibleX'].values)
