@@ -14,6 +14,8 @@ import seaborn as sns
 import os
 import glob
 import sys
+import time
+import multiprocessing as mp
 
 
 def errorFunction(theta, y0, tVector, data, sigma, allParams, timeStep):
@@ -27,7 +29,7 @@ def errorFunction(theta, y0, tVector, data, sigma, allParams, timeStep):
         allParams = patientFlow(allParams, tVec[0], timeStep)
         funArgs = (numberUnits,*allParams['generalParamsValues'][:ind],*patientStatus,allParams['unitParamsValues'],\
                allParams['admission'],allParams['discharge'],allParams['transferIn'],\
-               allParams['transferOut'],allParams['internalTransferRate'],\
+               allParams['transferOut'],allParams['intTransferRate'],\
                allParams['deviceTransferRate'])
         output = odeint(EpiEquations, y0, tVec, args=tuple(funArgs))
         if any(output[-1]<-1):
@@ -48,7 +50,7 @@ def errorFunction(theta, y0, tVector, data, sigma, allParams, timeStep):
     return -(0.5/sigma**2)*np.sum(err**2)
     
 
-def runMCMC(loglikeFunc, sensitivity, allParams, nSamples):    
+def runMCMC(loglikeFunc, sensitivity, allParams, nSamples, nCore):    
     with pm.Model() as Model:
         theta = []
         for i in range(sensitivity.shape[0]):
@@ -59,7 +61,7 @@ def runMCMC(loglikeFunc, sensitivity, allParams, nSamples):
         theta = tt.as_tensor_variable(theta)
         pm.Potential('likelihood', loglikeFunc(theta))
         trace = pm.sample(nSamples, tune=int(nSamples/2), step=pm.Metropolis(), 
-                          cores=8, chains=1)
+                          cores=nCore, chains=2)
         data = az.from_pymc3(trace=trace)
         az.plot_trace(trace)
         plt.savefig('./calibration/MCMC/traces.png',dpi=300)
@@ -119,7 +121,7 @@ def plotCalibratedModel(timeStep, simLength):
     fig.savefig("./calibration/MCMC/results.png", dpi=300)
     plt.close('all')
 
-def main(nSamples, timeStep, simLength):
+def main(nCore, nSamples, timeStep, simLength):
     if not os.path.isdir("./calibration/MCMC"):
         os.mkdir("./calibration/MCMC")
     allParams = importData(timeStep)
@@ -140,17 +142,20 @@ def main(nSamples, timeStep, simLength):
     obs = [avgC, avgI]
     # create our Op
     loglikeFunc = LogLike(errorFunction, y0, tVector, obs, sigma, allParams, timeStep)
-    runMCMC(loglikeFunc, sensitivity, allParams, nSamples)
+    runMCMC(loglikeFunc, sensitivity, allParams, nSamples, nCore)
     plotCalibratedModel(timeStep, simLength)
     
     
 if __name__ == '__main__':
     try:
-        nSamples, timeStep, simLength = [int(i) for i in sys.argv[1:]]
+        nCore, nSamples, timeStep, simLength = [int(i) for i in sys.argv[1:]]
     except:
-        nSamples = 2
+        nCore = mp.cpu_count()
+        nSamples = 4
         timeStep = 1  # hour(s)
         simLength = 10
-    main(nSamples, timeStep, simLength)
+    t0 = time.time()    
+    main(nCore, nSamples, timeStep, simLength)
+    print(time.time()-t0)
     
   

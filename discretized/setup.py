@@ -28,6 +28,9 @@ def importData(timeStep):
     generalParamsValues = generalParams.iloc[:,1].values
     allParams['generalParamsNames'] = generalParamsNames
     allParams['generalParamsValues'] = generalParamsValues
+    # unit names
+    unitNames = pd.read_csv("./data/unit data/names.csv",header=None).iloc[:,0].values
+    allParams['unitNames'] = unitNames
     # unit Parameters
     unitParams = pd.read_csv("./data/unit data/unit_parameters.csv")
     unitParamsNames = unitParams.iloc[:,0].values
@@ -35,8 +38,8 @@ def importData(timeStep):
     allParams['unitParamsNames'] = unitParamsNames
     allParams['unitParamsValues'] = unitParamsValues
     # internal patient transfer rate
-    internalTransferRate = np.array(pd.read_csv("./data/patient_transfer_internal.csv",index_col=[0]))
-    allParams['internalTransferRate'] = internalTransferRate
+    internalTransferData = pd.read_csv("./data/patient_transfer_internal.csv")
+    allParams['internalTransferData'] = internalTransferData
     # device transfer rate
     deviceTransferRate = np.array(pd.read_csv("./data/device_transfer_rate.csv",index_col=[0]))
     allParams['deviceTransferRate'] = deviceTransferRate
@@ -73,8 +76,6 @@ def adjustToTimeStep(allParams, timeStep):
     # unit Parameters
     ind = [i for i, e in enumerate(allParams['unitParamsNames']) if e not in ['r_n', 'r_d']]
     allParams['unitParamsValues'][ind] = [allParams['unitParamsValues'][i]*timeStep for i in ind]
-    # internal patient transfer rate
-    allParams['internalTransferRate'] *= timeStep
     # device transfer rate
     allParams['deviceTransferRate'] *= timeStep
     return allParams

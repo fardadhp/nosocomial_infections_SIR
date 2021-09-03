@@ -4,7 +4,7 @@ def EpiEquations(y, t, numberUnits, omega_UC, omega_DC, omega_I, alpha_b, rho, p
                  epsilon, kappa, delta, sigma_h, sigmaHat_h, rho_C, sigma_y, sigma_l, \
                  sigma_w, sigmaHat_y, sigmaHat_l, sigmaHat_w, beta_hp, beta_ph, \
                  E50, eta_p, eta_h, zeta, xi, admC, admI, admX_S, tranC, tranI, tranX_S, \
-                 unitParamsValues, psi_in, psi_out, n_in, n_out, internalTransferRate, \
+                 unitParamsValues, psi_in, psi_out, n_in, n_out, intTransferRate, \
                  deviceTransferRate):
     (S, X, UC, DC, I, M, N0, N1, D0, D1, Y, L, W) = [y[i:i + numberUnits] for i in range(0, len(y), numberUnits)]
     P = S + X + UC + DC + I + M
@@ -23,13 +23,13 @@ def EpiEquations(y, t, numberUnits, omega_UC, omega_DC, omega_I, alpha_b, rho, p
     extTransIn_S, extTransIn_X, extTransIn_C, extTransIn_I = np.vstack(statusAtTransfer) * n_in
     m_l = deviceTransferRate
     
-    S_dot = f_S + extTransIn_S + (S * internalTransferRate.transpose()/P).sum(1) + omega_UC * UC + omega_DC * DC - alpha_np * S * N1 / (N1+N0) - alpha_dp * S * D1 / (D1+D0) - (sum(internalTransferRate.transpose())/P + psi_out / P + n_out / P + alpha_b + alpha_ep) * S
-    X_dot = f_X + extTransIn_X + (X * internalTransferRate.transpose()/P).sum(1) + (1- rho) * omega_I * I - alpha_np * pi * X * N1 / (N1+N0) - alpha_dp * pi * X * D1 / (D1+D0) - (sum(internalTransferRate.transpose())/P + psi_out / P + n_out / P + pi * (alpha_b + alpha_ep)) * X
-    UC_dot = (1-zeta) * (f_C + extTransIn_C) + (UC * internalTransferRate.transpose()/P).sum(1) + alpha_np * (1-epsilon) * (S + pi * X) * N1 / (N1+N0) + alpha_dp * (1-epsilon) * (S + pi * X) * D1 / (D1+D0) + \
-    		alpha_ep * (1-epsilon) * (S + pi * X) + alpha_b * (1-epsilon) * (S + pi * X) + rho * omega_I * I - (sum(internalTransferRate.transpose())/P + n_out / P + psi_out / P + kappa + omega_UC + xi) * UC
-    DC_dot = zeta * (f_C + extTransIn_C) + (DC * internalTransferRate.transpose()/P).sum(1) + xi * UC - (sum(internalTransferRate.transpose())/P + n_out / P + psi_out / P + kappa + omega_DC) * DC
-    I_dot = f_I + extTransIn_I + (I * internalTransferRate.transpose()/P).sum(1) + alpha_np * epsilon * (S + pi * X) * N1 / (N1+N0) + alpha_dp * epsilon * (S + pi * X) * D1 / (D1+D0) + \
-    		alpha_ep * epsilon * (S + pi * X) + alpha_b * epsilon * (S + pi * X) + kappa * (UC + DC) - (sum(internalTransferRate.transpose())/P + n_out / P + psi_out / P + omega_I + delta) * I
+    S_dot = f_S + extTransIn_S + (S * intTransferRate.transpose()/P).sum(1) + omega_UC * UC + omega_DC * DC - alpha_np * S * N1 / (N1+N0) - alpha_dp * S * D1 / (D1+D0) - (sum(intTransferRate.transpose())/P + psi_out / P + n_out / P + alpha_b + alpha_ep) * S
+    X_dot = f_X + extTransIn_X + (X * intTransferRate.transpose()/P).sum(1) + (1- rho) * omega_I * I - alpha_np * pi * X * N1 / (N1+N0) - alpha_dp * pi * X * D1 / (D1+D0) - (sum(intTransferRate.transpose())/P + psi_out / P + n_out / P + pi * (alpha_b + alpha_ep)) * X
+    UC_dot = (1-zeta) * (f_C + extTransIn_C) + (UC * intTransferRate.transpose()/P).sum(1) + alpha_np * (1-epsilon) * (S + pi * X) * N1 / (N1+N0) + alpha_dp * (1-epsilon) * (S + pi * X) * D1 / (D1+D0) + \
+    		alpha_ep * (1-epsilon) * (S + pi * X) + alpha_b * (1-epsilon) * (S + pi * X) + rho * omega_I * I - (sum(intTransferRate.transpose())/P + n_out / P + psi_out / P + kappa + omega_UC + xi) * UC
+    DC_dot = zeta * (f_C + extTransIn_C) + (DC * intTransferRate.transpose()/P).sum(1) + xi * UC - (sum(intTransferRate.transpose())/P + n_out / P + psi_out / P + kappa + omega_DC) * DC
+    I_dot = f_I + extTransIn_I + (I * intTransferRate.transpose()/P).sum(1) + alpha_np * epsilon * (S + pi * X) * N1 / (N1+N0) + alpha_dp * epsilon * (S + pi * X) * D1 / (D1+D0) + \
+    		alpha_ep * epsilon * (S + pi * X) + alpha_b * epsilon * (S + pi * X) + kappa * (UC + DC) - (sum(intTransferRate.transpose())/P + n_out / P + psi_out / P + omega_I + delta) * I
     M_dot = delta * I
     N0_dot = (sigma_h + sigmaHat_h) * N1 - alpha_pn * N0 * (I + rho_C * (UC+DC)) / P - alpha_en * N0
     N1_dot = -1 * N0_dot

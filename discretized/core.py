@@ -11,20 +11,30 @@ import scipy.stats as stats
 
 def patientFlow(allParams, t, timeStep):
     numberUnits = allParams['initialConditionsValues'].shape[1]
+    admission, discharge, extTransferIn, extTransferOut = [[0] * numberUnits for i in range(4)]
+    intTransferRate = pd.DataFrame(np.zeros((numberUnits, numberUnits)), index=allParams['unitNames'], columns=allParams['unitNames'])
     if t % int(24/timeStep) == 0:
         tt = int(t//int(24/timeStep))
-        admission = np.array([unit[tt] for unit in allParams['admissionTS']])
-        discharge = np.array([unit[tt] for unit in allParams['dischargeTS']])
-        extTransferIn = np.array([unit[tt] for unit in allParams['transferInTS']])
-        extTransferOut = np.array([unit[tt] for unit in allParams['transferOutTS']])
-    else:
-        admission, discharge, extTransferIn, extTransferOut = [0,0,0,0]
-    allParams['admission'] = admission / int(24/timeStep)
-    allParams['discharge'] = discharge / int(24/timeStep)
-    # extTransferIn = np.clip(extTransfer, a_min=0, a_max=np.inf) / int(24/timeStep)
-    # extTransferOut = np.clip(-extTransfer, a_min=0, a_max=np.inf) / int(24/timeStep)
-    allParams['transferIn'] = extTransferIn / int(24/timeStep)
-    allParams['transferOut'] = extTransferOut / int(24/timeStep)    
+        admission = np.array([unit[tt] for unit in allParams['admissionTS']], dtype=float)
+        discharge = np.array([unit[tt] for unit in allParams['dischargeTS']], dtype=float)
+        extTransferIn = np.array([unit[tt] for unit in allParams['transferInTS']], dtype=float)
+        extTransferOut = np.array([unit[tt] for unit in allParams['transferOutTS']], dtype=float)
+        intTransfer = allParams['internalTransferData'].loc[allParams['internalTransferData']['Day']==tt,:]
+        if len(intTransfer) > 0:
+            for i, row in intTransfer.iterrows():
+                intTransferRate.loc[row['Source'], row['Destination']] = 1
+        # adjust to timestep
+        admission /= int(24/timeStep)
+        discharge /= int(24/timeStep)
+        extTransferIn /= int(24/timeStep)
+        extTransferOut /= int(24/timeStep)
+        intTransferRate /= int(24/timeStep)
+    intTransferRate = np.array(intTransferRate)
+    allParams['admission'] = admission
+    allParams['discharge'] = discharge
+    allParams['transferIn'] = extTransferIn
+    allParams['transferOut'] = extTransferOut
+    allParams['intTransferRate'] = intTransferRate
     return allParams
 
 def samplePatientStatus(allParams):
@@ -55,7 +65,7 @@ def runModel(allParams, y0, tVector, timeStep, simLength):
         allParams = patientFlow(allParams, tVec[0], timeStep)
         funArgs = (numberUnits,*allParams['generalParamsValues'][:ind],*patientStatus,\
                    allParams['unitParamsValues'],allParams['admission'],allParams['discharge'],\
-                   allParams['transferIn'],allParams['transferOut'],allParams['internalTransferRate'],\
+                   allParams['transferIn'],allParams['transferOut'],allParams['intTransferRate'],\
                    allParams['deviceTransferRate'])
         output = odeint(EpiEquations, y0, tVec, args=funArgs)
         if any(output[-1]<-1):
