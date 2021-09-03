@@ -151,9 +151,9 @@ if __name__ == '__main__':
         nCore, nSamples, timeStep, simLength = [int(i) for i in sys.argv[1:]]
     except:
         nCore = mp.cpu_count()
-        nSamples = 4
+        nSamples = 3000
         timeStep = 1  # hour(s)
-        simLength = 10
+        simLength = 365
     t0 = time.time()    
     main(nCore, nSamples, timeStep, simLength)
     print(time.time()-t0)
