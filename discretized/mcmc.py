@@ -61,7 +61,7 @@ def runMCMC(loglikeFunc, sensitivity, allParams, nSamples, nCore):
         theta = tt.as_tensor_variable(theta)
         pm.Potential('likelihood', loglikeFunc(theta))
         trace = pm.sample(nSamples, tune=int(nSamples/2), step=pm.Metropolis(), 
-                          cores=nCore, chains=1)
+                          cores=nCore, chains=min(4, nCore))
         data = az.from_pymc3(trace=trace)
         az.plot_trace(trace)
         plt.savefig('./calibration/MCMC/traces.png',dpi=300)
