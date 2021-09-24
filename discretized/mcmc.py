@@ -20,7 +20,7 @@ import multiprocessing as mp
 
 def errorFunction(theta, y0, tVector, data, sigma, allParams, timeStep):
     allParams['generalParamsValues'] = theta
-    numberUnits = allParams['initialConditionsValues'].shape[1]
+    numberUnits = len(allParams['unitNames'])
     y = []
     ind = np.where(allParams['generalParamsNames']=='muAdmC')[0][0]
     for i in range(int(len(tVector)/int(24/timeStep))):
@@ -74,7 +74,8 @@ def runMCMC(loglikeFunc, sensitivity, allParams, nSamples, nCore, nTune):
 
 def plotCalibratedModel(timeStep, simLength):
     allParams = importData(timeStep)
-    numberUnits = allParams['initialConditionsValues'].shape[1]
+    unitNames = allParams['unitNames']
+    numberUnits = len(unitNames)
     y0, tVector = setupModel(allParams, timeStep, simLength)
     calParams = pd.read_csv('./calibration/MCMC/posterior_samples.csv')
     dataC = [item[:len(tVector)//int(24/timeStep)] for item in allParams['fitData']['C_fitData']]
@@ -100,33 +101,31 @@ def plotCalibratedModel(timeStep, simLength):
         maxI.append(pd.DataFrame([it[i] for it in I]).max(0).values)
     
     ncol = 2
-    fig, ax = plt.subplots(figsize=(16,(numberUnits)*8),nrows=numberUnits,ncols=ncol)
     for i in range(numberUnits):
-        ax[i][0].plot(dataC[i], color='red', label='data')
-        ax[i][0].plot(np.transpose(meanC)[i], color='black', linestyle='--', label='model')
-        ax[i][0].fill_between(np.arange(simLength), np.transpose(minC)[i], np.transpose(meanC)[i], color='#7fc97f', label='95% CI')
-        ax[i][0].fill_between(np.arange(simLength), np.transpose(maxC)[i], np.transpose(meanC)[i], color='#7fc97f')
-        ax[i][1].plot(dataI[i], color='red', label='data')
-        ax[i][1].plot(np.transpose(meanI)[i], color='black', linestyle='--', label='model')        
-        ax[i][1].fill_between(np.arange(simLength), np.transpose(minI)[i], np.transpose(meanI)[i], color='#beaed4', label='95% CI')
-        ax[i][1].fill_between(np.arange(simLength), np.transpose(maxI)[i], np.transpose(meanI)[i], color='#beaed4')
-        ax[i][0].set_xticklabels(['detected colonized'])
-        ax[i][0].set_ylabel('Unit '+str(i+1), fontsize=20)
-        ax[i][1].set_xticklabels(['infected'])
-        ax[i][0].legend()
-        ax[i][1].legend()
-    for i in range(numberUnits):
-        for j in range(2):
-            ax[i][j].tick_params(labelsize=20)
-    fig.savefig("./calibration/MCMC/results.png", dpi=300)
-    plt.close('all')
+        fig, ax = plt.subplots(figsize=(16,8),nrows=1,ncols=ncol)
+        ax[0].plot(dataC[i], color='red', label='data')
+        ax[0].plot(np.transpose(meanC)[i], color='black', linestyle='--', label='model')
+        ax[0].fill_between(np.arange(simLength), np.transpose(minC)[i], np.transpose(meanC)[i], color='#7fc97f', label='95% CI')
+        ax[0].fill_between(np.arange(simLength), np.transpose(maxC)[i], np.transpose(meanC)[i], color='#7fc97f')
+        ax[1].plot(dataI[i], color='red', label='data')
+        ax[1].plot(np.transpose(meanI)[i], color='black', linestyle='--', label='model')        
+        ax[1].fill_between(np.arange(simLength), np.transpose(minI)[i], np.transpose(meanI)[i], color='#beaed4', label='95% CI')
+        ax[1].fill_between(np.arange(simLength), np.transpose(maxI)[i], np.transpose(meanI)[i], color='#beaed4')
+        ax[0].set_title('detected colonized')
+        ax[1].set_title('infected')
+        ax[0].legend()
+        ax[1].legend()
+        ax[0].tick_params(labelsize=16)
+        ax[1].tick_params(labelsize=16)
+        fig.savefig("./calibration/MCMC/results_"+unitNames[i]+".png", dpi=300)
+        plt.close('all')
 
 def main(nCore, nSamples, nTune, timeStep, simLength):
     if not os.path.isdir("./calibration/MCMC"):
         os.mkdir("./calibration/MCMC")
     allParams = importData(timeStep)
     y0, tVector = setupModel(allParams, timeStep, simLength)
-    numberUnits = allParams['initialConditionsValues'].shape[1]    
+    numberUnits = len(allParams['unitNames'])   
     sigma = 1
     sensitivity = pd.read_csv('./calibration/MCMC_priors.csv')
     calParams = pd.read_csv('./calibration/to_be_calibrated.csv', header=None).iloc[:,0].values
@@ -152,7 +151,7 @@ if __name__ == '__main__':
     except:
         nCore = mp.cpu_count()
         nSamples = 4
-        nTune = 4
+        nTune = 2
         timeStep = 1  # hour(s)
         simLength = 10
     t0 = time.time()    

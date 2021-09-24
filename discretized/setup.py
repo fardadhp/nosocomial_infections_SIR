@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import glob
+import os
 
 
 def importData(timeStep):
@@ -32,21 +32,21 @@ def importData(timeStep):
     allParams['generalParamsNames'] = generalParamsNames
     allParams['generalParamsValues'] = generalParamsValues
     # unit Parameters
-    unitParams = pd.read_csv("./data/unit data/unit_parameters.csv")
-    unitParamsNames = unitParams.iloc[:,0].values
-    unitParamsValues = unitParams.iloc[:,1:].values
+    unitParams = pd.read_csv("./data/unit data/unit_parameters.csv", index_col=0)
+    unitParamsNames = np.array(unitParams.index)
+    unitParamsValues = unitParams.loc[:, unitNames].values
     allParams['unitParamsNames'] = unitParamsNames
     allParams['unitParamsValues'] = unitParamsValues
-    # internal patient transfer rate
+    # internal patient transfer
     internalTransferData = pd.read_csv("./data/patient_transfer_internal.csv")
     allParams['internalTransferData'] = internalTransferData
-    # device transfer rate
-    deviceTransferRate = np.array(pd.read_csv("./data/device_transfer_rate.csv",index_col=[0]))
-    allParams['deviceTransferRate'] = deviceTransferRate
+    # device transfer
+    deviceTransferRate = pd.read_csv("./data/device_transfer_rate.csv",index_col=[0])
+    allParams['deviceTransferRate'] = deviceTransferRate.loc[unitNames, unitNames].values
     # initial conditions
-    initialConditions = pd.read_csv("./data/initial_conditions.csv")
-    initialConditionsParams = initialConditions.iloc[:,0].values
-    initialConditionsValues = initialConditions.iloc[:,1:].values
+    initialConditions = pd.read_csv("./data/initial_conditions.csv", index_col=0)
+    initialConditionsParams = np.array(initialConditions.index)
+    initialConditionsValues = initialConditions.loc[:, unitNames].values
     allParams['initialConditionsParams'] = initialConditionsParams
     allParams['initialConditionsValues'] = initialConditionsValues
     # patient status

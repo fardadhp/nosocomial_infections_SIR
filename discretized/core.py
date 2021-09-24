@@ -22,7 +22,8 @@ def patientFlow(allParams, t, timeStep):
         intTransfer = allParams['internalTransferData'].loc[allParams['internalTransferData']['Day']==tt,:]
         if len(intTransfer) > 0:
             for i, row in intTransfer.iterrows():
-                intTransferRate.loc[row['Source'], row['Destination']] = 1
+                if all(u in allParams['unitNames'] for u in [row['Source'],row['Destination']]):
+                    intTransferRate.loc[row['Source'], row['Destination']] = 1
         # adjust to timestep
         admission /= int(24/timeStep)
         discharge /= int(24/timeStep)
@@ -60,7 +61,7 @@ def runModel(allParams, y0, tVector, timeStep, simLength):
     y = []
     ind = np.where(allParams['generalParamsNames']=='muAdmC')[0][0]
     for i in range(simLength):
-        tVec = tVector[i*int(24/timeStep):(i+1)*int(24/timeStep)+1]
+        tVec = tVector[i*int(24/timeStep):(i+1)*int(24/timeStep)]
         patientStatus = samplePatientStatus(allParams)
         allParams = patientFlow(allParams, tVec[0], timeStep)
         funArgs = (numberUnits,*allParams['generalParamsValues'][:ind],*patientStatus,\
@@ -78,32 +79,32 @@ def runModel(allParams, y0, tVector, timeStep, simLength):
 def plotResults(y, numberUnits):
     if not os.path.isdir('./results'):
         os.mkdir('./results')
+    path = './results/'+allParams['modelName']
+    if not os.path.isdir(path):
+        os.mkdir(path)
+    unitNames = allParams['unitNames']
+    numberUnits = len(unitNames)
     lbls = ['S', 'X', 'UC', ' DC', 'I', 'M', 'N0', 'N1', 'D0', 'D1', 'Y', 'L', 'W']
     cols = []
     for l in lbls:
-        for u in range(1,numberUnits+1):
-            cols.extend([l+"_"+str(u)])
+        for u in unitNames:
+            cols.append(l+"_"+u)
     nc = 4
     for u in range(numberUnits):
-        fig1, ax1 = plt.subplots(figsize=(16,16),nrows=math.ceil(len(lbls)/nc),ncols=nc)
-        fig2, ax2 = plt.subplots(figsize=(16,16),nrows=math.ceil(len(lbls)/nc),ncols=nc)
+        fig, ax = plt.subplots(figsize=(16,16),nrows=math.ceil(len(lbls)/nc),ncols=nc)
         for i in range(len(lbls)):
-            ax1[i//nc][i%nc].plot(y.iloc[:,i*numberUnits+u])
-            ax1[i//nc][i%nc].set_title(lbls[i],fontsize=16)
-            ax1[i//nc][i%nc].tick_params(labelsize=12)
-            ax2[i//nc][i%nc].plot(np.round(y.iloc[:,i*numberUnits+u]))
-            ax2[i//nc][i%nc].set_title(lbls[i],fontsize=16)
-            ax2[i//nc][i%nc].tick_params(labelsize=12)
+            ax[i//nc][i%nc].plot(y.iloc[:,i*numberUnits+u])
+            ax[i//nc][i%nc].set_title(lbls[i],fontsize=16)
+            ax[i//nc][i%nc].tick_params(labelsize=12)
         for j in range(i+1, ax1.shape[0]*ax1.shape[1]):
-            ax1[j//nc][j%nc].set_visible(False)
-            ax2[j//nc][j%nc].set_visible(False)
-        fig1.tight_layout()
-        fig2.tight_layout()
-        fig1.savefig("./results/Unit_"+str(u+1)+".png", dpi=300)
-        fig2.savefig("./results/Unit_"+str(u+1)+"_rounded.png", dpi=300)
+            ax[j//nc][j%nc].set_visible(False)
+        fig.tight_layout()
+        fig.savefig(path+"/"+unitNames[u]+".png", dpi=300)
         plt.close('all')
     y.columns = cols
-    y.to_csv("./results/compartments.csv", index=False)
+    y.to_csv(path+"/compartments.csv", index=False)
+    with open(path+'/model_details.txt','w') as data: 
+      data.write(str(allParams))
 
 def plotFitData(allParams):
     numberUnits = allParams['initialConditionsValues'].shape[1]
